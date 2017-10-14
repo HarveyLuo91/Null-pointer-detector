@@ -77,20 +77,110 @@ public class NPDetector extends DefaultJimpleIFDSTabulationProblem<NullFlowAbstr
         final Stmt stmt = (Stmt) src;
         final Stmt stmtd = (Stmt) dest;
 
-        LOGGER.info("normal Flow Funtion! -- ");
+//        LOGGER.info("normal Flow Funtion!");
+//        LOGGER.info("src stmt:{}  type:{}", src.toString(), src.getClass());
+//        LOGGER.info("dest stmt:{} type:{}", dest.toString(), dest.getClass());
 
-        if(stmt instanceof AssignStmt){
-            Value left = ((AssignStmt) stmt).getLeftOp();
-            if(left instanceof Local){
-                LOGGER.info(((Local) left).getName());
-            }
-//            LOGGER.info(((AssignStmt) stmt).getLeftOp());
-        }
+        if (stmt instanceof AssignStmt) {
+            final AssignStmt assignStmt = (AssignStmt) stmt;
+            final Value left = assignStmt.getLeftOp();
+            final Value right = assignStmt.getRightOp();
 
-        if(stmt instanceof JThrowStmt){
-            JThrowStmt jThrowStmt = (JThrowStmt)stmt;
-            LOGGER.info(jThrowStmt.toString());
-        }
+            return new FlowFunction<NullFlowAbstraction>() {
+
+                @Override
+                public Set<NullFlowAbstraction> computeTargets(NullFlowAbstraction source) {
+
+                    Set<NullFlowAbstraction> outSet = new HashSet<NullFlowAbstraction>();
+
+                    // If the right side is tainted, we need to taint the left side as well
+                    // A a; Local ; Static ; Array
+
+                    NullFlowAbstraction fa = getTaint(right, left, source, src);
+                    if (fa != null) {
+//                        fa.getState().addAll(source.getState()); //for 别名分析
+//                        fa.getState().add(fa.getSwrLocal());
+                        outSet.add(fa);
+                    }
+                    return outSet;
+//                    //别名分析删掉被重写的fact
+//                    SwrLocal frm = null;
+//                    SwrLocal feq = null;
+//                    boolean rightSideMatche = false;
+//                    boolean leftSideMatche = false;
+//                    for (SwrLocal f : source.getState()) {
+//                        if (left instanceof Local && f.getLocal() == left) {
+//                            leftSideMatche = true;
+//                            frm = f;
+//                        } else if (left instanceof InstanceFieldRef) {
+//                            InstanceFieldRef ifr = (InstanceFieldRef) left;
+//                            if (f.hasPrefix(ifr)) {
+//                                leftSideMatche = true;
+//                                frm = f;
+//                            }
+//                        } else if (left instanceof StaticFieldRef) {
+//                            StaticFieldRef sfr = (StaticFieldRef) left;
+//                            if (f.hasPrefix(sfr)) {
+//                                leftSideMatche = true;
+//                                frm = f;
+//                            }
+//                        } else if (left instanceof ArrayRef) {
+//                            ArrayRef arrayRef = (ArrayRef) left;
+//                            if (f.getLocal() != null && arrayRef.getBase().equals(f.getLocal()) && f.getIndex().equals(Integer.parseInt(arrayRef.getIndex().toString()))) {
+//                                leftSideMatche = true;
+//                                frm = f;
+//                            }
+//                        }
+//
+//                        if (right instanceof Local && f.getLocal() == right) {
+//                            rightSideMatche = true;
+//                            feq = f;
+//                        } else if (right instanceof InstanceFieldRef) {
+//                            InstanceFieldRef ifr = (InstanceFieldRef) right;
+//                            if (f.hasPrefix(ifr)) {
+//                                rightSideMatche = true;
+//                                feq = f;
+//                            }
+//                        } else if (right instanceof StaticFieldRef) {
+//                            StaticFieldRef sfr = (StaticFieldRef) right;
+//                            if (f.hasPrefix(sfr)) {
+//                                rightSideMatche = true;
+//                                feq = f;
+//                            }
+//                        } else if (right instanceof ArrayRef) {
+//                            ArrayRef arrayRef = (ArrayRef) right;
+//                            if (f.getLocal() != null && arrayRef.getBase().equals(f.getLocal()) && f.getIndex().equals(Integer.parseInt(arrayRef.getIndex().toString()))) {
+//                                rightSideMatche = true;
+//                                feq = f;
+//                            }
+//                        }
+//                        if (leftSideMatche && rightSideMatche) break;
+//                    }
+//                    if (leftSideMatche && !rightSideMatche) {
+//                        source.getState().remove(frm);
+//                    }
+//                    if (rightSideMatche && !leftSideMatche) {
+//                        source.getState().add(SwrLocal.v(left, icfg.getMethodOf(src), feq.getIndex()));
+//                    }
+//                    outSet.add(source.deriveWithNewStmt(icfg.getMethodOf(src)));
+//                    return outSet;
+                }
+            };
+
+//        if (stmt instanceof AssignStmt) {
+//            Value left = ((AssignStmt) stmt).getLeftOp();
+//            if (left instanceof Local) {
+//                LOGGER.info(((Local) left).getName());
+//            }
+////            LOGGER.info(((AssignStmt) stmt).getLeftOp());
+//        }
+//
+//        if (dest instanceof JThrowStmt) {
+//            JThrowStmt jThrowStmt = (JThrowStmt) stmt;
+//            LOGGER.info(jThrowStmt.toString());
+//        }
+
+
 //
 //        if(stmt instanceof )
 //
@@ -209,6 +299,8 @@ public class NPDetector extends DefaultJimpleIFDSTabulationProblem<NullFlowAbstr
 //            }
 //        };
 
+        }
+
         return new FlowFunction<NullFlowAbstraction>() {
             @Override
             public Set<NullFlowAbstraction> computeTargets(NullFlowAbstraction source) {
@@ -221,6 +313,42 @@ public class NPDetector extends DefaultJimpleIFDSTabulationProblem<NullFlowAbstr
 
 
     public FlowFunction<NullFlowAbstraction> DealCallFlowFunction(final Unit src, final SootMethod dest) {
+
+        LOGGER.info("call Flow Funtion!");
+        LOGGER.info("src unit:{}  type:{}", src.toString(), src.getClass());
+        LOGGER.info("dest SootMethod:{} type:{}", dest.getName(), dest.getClass());
+
+        if (src instanceof InvokeStmt) {
+            Local l = null;
+//            List<ValueBox> useBox = ((InvokeStmt) src).getInvokeExpr().getUseBoxes();
+            List<Value> args = ((InvokeStmt) src).getInvokeExpr().getArgs();
+            LOGGER.info(((InvokeStmt) src).getInvokeExpr().getArgs().toString());
+            for (ValueBox valueBox : ((InvokeStmt) src).getInvokeExpr().getUseBoxes()) {
+                if(!args.contains(valueBox.getValue()))
+                    l = (Local)valueBox.getValue();
+                    LOGGER.info("value:{} type:{}",valueBox.getValue(),valueBox.getValue().getType());
+                    break;
+            }
+            final Local local = l;
+            return new FlowFunction<NullFlowAbstraction>() {
+                @Override
+                public Set<NullFlowAbstraction> computeTargets(NullFlowAbstraction source) {
+                    if(local != null){
+                        if(source.getLocal() != null){
+                            if(source.getLocal().equals(local)){
+                                LOGGER.info("NULL POINTER DEFERENCE DETECT!!!");
+                            }
+                        }
+
+                    }
+
+                    Set<NullFlowAbstraction> outSet = new HashSet<NullFlowAbstraction>();
+                    return outSet;
+                }
+            };
+
+        }
+
 //        if (!icfg.IsAppMethod(dest)) {
 //            return KillAll.v();
 //        }
@@ -550,29 +678,31 @@ public class NPDetector extends DefaultJimpleIFDSTabulationProblem<NullFlowAbstr
 
     /***** Taints *****/
 
-    private FlowAbstraction getTaint(Value right, Value left, FlowAbstraction source, Unit src) {
-        FlowAbstraction fa = null;
+    private NullFlowAbstraction getTaint(Value right, Value left, NullFlowAbstraction source, Unit src) {
+        NullFlowAbstraction fa = null;
         if (right instanceof CastExpr)
             right = ((CastExpr) right).getOp();
-        if (right instanceof Local && source.getLocal() == right) {
-            fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
-            fa = fa.append(source.getFields());
+        if (right instanceof NullType) {
+            fa = NullFlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
+        } else if (right instanceof Local && source.getLocal() == right) {
+            fa = NullFlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
+//            fa = fa.append(source.getFields());
         } else if (right instanceof InstanceFieldRef) {
             InstanceFieldRef ifr = (InstanceFieldRef) right;
-            if (source.hasPrefix(ifr)) {
-                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
-                fa = fa.append(source.getPostfix(ifr));
-            }
+//            if (source.hasPrefix(ifr)) {
+//                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
+//                fa = fa.append(source.getPostfix(ifr));
+//            }
         } else if (right instanceof StaticFieldRef) {
             StaticFieldRef sfr = (StaticFieldRef) right;
-            if (source.hasPrefix(sfr)) {
-                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
-                fa = fa.append(source.getPostfix(sfr));
-            }
+//            if (source.hasPrefix(sfr)) {
+//                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
+//                fa = fa.append(source.getPostfix(sfr));
+//            }
         } else if (right instanceof ArrayRef) {
             ArrayRef ar = (ArrayRef) right;
-            if (ar.getBase() == source.getLocal())
-                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
+//            if (ar.getBase() == source.getLocal())
+//                fa = FlowAbstraction.v(source.getSource(), left, icfg.getMethodOf(src), source);
         }
         return fa;
     }

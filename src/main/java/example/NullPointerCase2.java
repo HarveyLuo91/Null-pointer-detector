@@ -1,9 +1,7 @@
 package example;
 
-import java.io.IOException;
-
 public class NullPointerCase2 {
-    public void foo(FileIO3 io) {
+    public void foo(NullPointerCase3 io) {
         io.test();
     }
 }
