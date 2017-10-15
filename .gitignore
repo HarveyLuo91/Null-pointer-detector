@@ -1,0 +1,12 @@
+/target/
+/.settings/
+/.project
+/.factorypath
+/.classpath
+/.springBeans
+*.iml
+*.ipr
+*.iws
+.idea/
+target/
+*.real_output.txt
